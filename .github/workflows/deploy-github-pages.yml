@@ -41,6 +41,7 @@ jobs:
         run: |
           cd frontend
           echo "VITE_DEMO_MODE=true" > .env.production
+          echo "VITE_BASE_PATH=/Teambot/" >> .env.production
           npm run build
         env:
           NODE_ENV: production
