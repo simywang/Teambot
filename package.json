@@ -1,0 +1,30 @@
+{
+  "name": "teams-loi-bot",
+  "version": "1.0.0",
+  "description": "Microsoft Teams Bot for Live of Interest tracking",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "start": "bash start.sh",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "clean": "rm -rf backend/node_modules backend/dist frontend/node_modules frontend/dist node_modules"
+  },
+  "keywords": [
+    "teams",
+    "bot",
+    "microsoft",
+    "trading",
+    "loi"
+  ],
+  "author": "Your Company",
+  "license": "MIT"
+}
+

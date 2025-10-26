@@ -1,0 +1,1126 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  makeStyles,
+  Button,
+  Input,
+  Card,
+  Text,
+  Badge,
+  Avatar,
+  Divider,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
+  Checkbox,
+} from '@fluentui/react-components';
+import { 
+  Send24Regular, 
+  Add24Regular, 
+  Bot24Regular, 
+  Person24Regular,
+  People24Regular,
+} from '@fluentui/react-icons';
+import mockApiService from '../services/mockApi';
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    height: '100vh',
+    backgroundColor: '#F5F5F5',
+  },
+  sidebar: {
+    width: '320px',
+    backgroundColor: '#F0F0F0',
+    borderRight: `1px solid #E0E0E0`,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  sidebarHeader: {
+    padding: '16px',
+    backgroundColor: '#464775',
+    color: 'white',
+  },
+  chatList: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '8px',
+  },
+  chatItem: {
+    padding: '12px',
+    cursor: 'pointer',
+    borderRadius: '4px',
+    marginBottom: '2px',
+    backgroundColor: 'transparent',
+    ':hover': {
+      backgroundColor: '#E0E0E0',
+    },
+  },
+  chatItemActive: {
+    backgroundColor: 'white',
+    borderLeft: '3px solid #6264A7',
+  },
+  chatArea: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: 'white',
+  },
+  chatHeader: {
+    padding: '12px 20px',
+    borderBottom: `1px solid #E0E0E0`,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  messages: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    backgroundColor: 'white',
+  },
+  message: {
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
+  },
+  messageContent: {
+    flex: 1,
+  },
+  messageBubble: {
+    backgroundColor: '#F5F5F5',
+    padding: '10px 12px',
+    borderRadius: '4px',
+    maxWidth: '70%',
+    marginTop: '4px',
+  },
+  card: {
+    backgroundColor: 'white',
+    padding: '16px',
+    borderRadius: '4px',
+    border: `1px solid #E0E0E0`,
+    maxWidth: '500px',
+    marginTop: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  previewCard: {
+    backgroundColor: '#FFF4E5',
+    borderLeft: '4px solid #FFA500',
+  },
+  cardField: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    marginBottom: '12px',
+  },
+  cardActions: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '16px',
+  },
+  inputArea: {
+    padding: '16px 20px',
+    borderTop: `1px solid #E0E0E0`,
+    backgroundColor: 'white',
+  },
+  inputWrapper: {
+    position: 'relative',
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#F5F5F5',
+    border: `1px solid #E0E0E0`,
+    borderRadius: '4px',
+    padding: '10px 12px',
+    fontSize: '14px',
+  },
+  mentionMenu: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    marginBottom: '4px',
+    backgroundColor: 'white',
+    border: '1px solid #E0E0E0',
+    borderRadius: '4px',
+    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+    minWidth: '250px',
+    zIndex: 1000,
+  },
+  mentionItem: {
+    padding: '8px 12px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    ':hover': {
+      backgroundColor: '#F5F5F5',
+    },
+  },
+  notification: {
+    backgroundColor: '#E8F5E9',
+    padding: '12px',
+    borderRadius: '4px',
+    borderLeft: '4px solid #4CAF50',
+    marginTop: '8px',
+  },
+});
+
+interface Message {
+  id: string;
+  sender: string;
+  text?: string;
+  card?: any;
+  notification?: boolean;
+  type: 'user' | 'bot' | 'system';
+  timestamp: Date;
+}
+
+interface GroupChat {
+  id: string;
+  name: string;
+  members: string[];
+  hasBot: boolean;
+}
+
+const AVAILABLE_USERS = [
+  { id: '1', name: 'John Smith', role: 'Sales Manager' },
+  { id: '2', name: 'Sarah Johnson', role: 'Director' },
+  { id: '3', name: 'Mike Chen', role: 'Trader' },
+  { id: '4', name: 'Emma Wilson', role: 'Sales Rep' },
+  { id: '5', name: 'David Lee', role: 'Analyst' },
+  { id: '6', name: 'Lisa Anderson', role: 'Account Manager' },
+  { id: '7', name: 'Tom Brown', role: 'Senior Trader' },
+  { id: '8', name: 'Anna Garcia', role: 'Operations' },
+];
+
+const TeamsSimulator: React.FC = () => {
+  const styles = useStyles();
+  const [chats, setChats] = useState<GroupChat[]>([
+    { 
+      id: '1', 
+      name: 'Sales Team - Q1', 
+      members: ['John Smith', 'Sarah Johnson'], 
+      hasBot: true 
+    },
+  ]);
+  const [activeChat, setActiveChat] = useState<string>('1');
+  const [messages, setMessages] = useState<Record<string, Message[]>>({
+    '1': [
+      {
+        id: '1',
+        sender: 'John Smith',
+        text: 'Customer Lindt wants to buy 100 MT cocoa butter at 2.56 FOB H1 2026. Is this offer ok?',
+        type: 'user',
+        timestamp: new Date(Date.now() - 300000),
+      },
+      {
+        id: '2',
+        sender: 'Sarah Johnson',
+        text: 'No, offer 2.78 FOB.',
+        type: 'user',
+        timestamp: new Date(Date.now() - 240000),
+      },
+      {
+        id: '3',
+        sender: 'John Smith',
+        text: 'Ok, will do.',
+        type: 'user',
+        timestamp: new Date(Date.now() - 180000),
+      },
+    ],
+  });
+  const [inputText, setInputText] = useState('');
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [showAddMembersDialog, setShowAddMembersDialog] = useState(false);
+  const [newChatName, setNewChatName] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, activeChat]);
+
+  // Listen for dashboard updates
+  useEffect(() => {
+    const handleDashboardUpdate = (event: any) => {
+      const { loi, updatedBy, changes } = event.detail;
+      
+      // Find which chat this LOI belongs to
+      const chatId = loi.teams_conversation_id;
+      if (chatId && messages[chatId]) {
+        const changeText = Object.entries(changes)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ');
+        
+        const notification: Message = {
+          id: Date.now().toString(),
+          sender: 'System',
+          text: `${updatedBy} updated Live of Interest from Dashboard: ${changeText}`,
+          type: 'system',
+          notification: true,
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => ({
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), notification],
+        }));
+      }
+    };
+
+    window.addEventListener('dashboard-loi-updated', handleDashboardUpdate);
+    return () => window.removeEventListener('dashboard-loi-updated', handleDashboardUpdate);
+  }, [messages]);
+
+  const currentChat = chats.find(c => c.id === activeChat);
+  const currentMessages = messages[activeChat] || [];
+
+  const handleInputChange = (value: string) => {
+    setInputText(value);
+    
+    // Check if user typed @
+    const lastAtIndex = value.lastIndexOf('@');
+    if (lastAtIndex !== -1 && lastAtIndex === value.length - 1) {
+      setShowMentionMenu(true);
+    } else if (showMentionMenu && !value.includes('@')) {
+      setShowMentionMenu(false);
+    }
+  };
+
+  const handleMentionSelect = () => {
+    const beforeAt = inputText.substring(0, inputText.lastIndexOf('@'));
+    const newText = beforeAt + '@Live of Interest Bot ';
+    setInputText(newText);
+    setShowMentionMenu(false);
+    
+    // Focus input after state update
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+    
+    // Trigger bot response
+    setTimeout(() => {
+      handleBotResponse();
+    }, 800);
+  };
+
+  const handleSendMessage = () => {
+    if (!inputText.trim()) return;
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'You',
+      text: inputText,
+      type: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [activeChat]: [...(prev[activeChat] || []), newMessage],
+    }));
+
+    setInputText('');
+  };
+
+  const handleBotResponse = () => {
+    console.log('Bot responding...');
+    
+    // Simulate AI extraction
+    const extractedData = {
+      customer: 'Lindt',
+      product: 'Cocoa Butter',
+      ratio: 2.78,
+      incoterm: 'FOB',
+      period: 'Jan-Jun 2026',
+      quantity_mt: 100,
+    };
+
+    const botMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'Live of Interest Bot',
+      type: 'bot',
+      card: {
+        type: 'draft',
+        data: extractedData,
+        loiId: null,
+      },
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [activeChat]: [...(prev[activeChat] || []), botMessage],
+    }));
+    
+    console.log('Bot message added');
+  };
+
+  const handleConfirmCard = async (messageId: string, cardData: any) => {
+    console.log('Confirming card...', messageId, cardData);
+    
+    // Create LOI
+    const newLOI = await mockApiService.createLOI({
+      teams_conversation_id: activeChat,
+      customer: cardData.customer,
+      product: cardData.product,
+      ratio: parseFloat(cardData.ratio) || 0,
+      incoterm: cardData.incoterm,
+      period: cardData.period,
+      quantity_mt: parseInt(cardData.quantity_mt) || 0,
+    });
+    
+    console.log('LOI created:', newLOI);
+
+    // Update card to confirmed state
+    setMessages(prev => {
+      const chatMessages = [...(prev[activeChat] || [])];
+      const msgIndex = chatMessages.findIndex(m => m.id === messageId);
+      if (msgIndex !== -1) {
+        chatMessages[msgIndex] = {
+          ...chatMessages[msgIndex],
+          card: {
+            type: 'confirmed',
+            data: newLOI,
+            loiId: newLOI.id,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [activeChat]: chatMessages,
+      };
+    });
+
+    // Dispatch event for dashboard
+    window.dispatchEvent(new CustomEvent('loi-created', { detail: newLOI }));
+  };
+
+  const handleCardUpdate = async (messageId: string, loiId: string, updates: any) => {
+    console.log('Updating card...', messageId, loiId, updates);
+    const updatedLOI = await mockApiService.updateLOI(loiId, updates);
+    console.log('LOI updated:', updatedLOI);
+    
+    // Update card in messages
+    setMessages(prev => {
+      const chatMessages = [...(prev[activeChat] || [])];
+      const msgIndex = chatMessages.findIndex(m => m.id === messageId);
+      if (msgIndex !== -1) {
+        chatMessages[msgIndex] = {
+          ...chatMessages[msgIndex],
+          card: {
+            ...chatMessages[msgIndex].card,
+            data: updatedLOI,
+          },
+        };
+      }
+      return {
+        ...prev,
+        [activeChat]: chatMessages,
+      };
+    });
+
+    // Dispatch event for dashboard
+    window.dispatchEvent(new CustomEvent('loi-updated', { detail: updatedLOI }));
+  };
+
+  const handleCreateChat = () => {
+    console.log('Creating chat...', newChatName, selectedMembers);
+    
+    if (!newChatName.trim()) {
+      alert('Please enter a group chat name');
+      return;
+    }
+    
+    if (selectedMembers.length === 0) {
+      alert('Please select at least one member');
+      return;
+    }
+
+    const newChat: GroupChat = {
+      id: Date.now().toString(),
+      name: newChatName,
+      members: selectedMembers,
+      hasBot: selectedMembers.includes('Live of Interest Bot'),
+    };
+
+    setChats(prev => [...prev, newChat]);
+    setMessages(prev => ({ ...prev, [newChat.id]: [] }));
+    setActiveChat(newChat.id);
+    setShowNewChatDialog(false);
+    setNewChatName('');
+    setSelectedMembers([]);
+  };
+
+  const handleAddMembers = () => {
+    console.log('Adding members...', selectedMembers);
+    
+    if (selectedMembers.length === 0) {
+      alert('Please select at least one member');
+      return;
+    }
+
+    setChats(prev => prev.map(chat => 
+      chat.id === activeChat 
+        ? { 
+            ...chat, 
+            members: [...new Set([...chat.members, ...selectedMembers])],
+            hasBot: chat.hasBot || selectedMembers.includes('Live of Interest Bot'),
+          }
+        : chat
+    ));
+
+    setShowAddMembersDialog(false);
+    setSelectedMembers([]);
+  };
+
+  const renderCard = (message: Message) => {
+    const card = message.card;
+    if (!card) return null;
+
+    if (card.type === 'draft') {
+      return <DraftCard message={message} onConfirm={handleConfirmCard} />;
+    } else if (card.type === 'confirmed') {
+      return <ConfirmedCard message={message} onUpdate={handleCardUpdate} />;
+    }
+  };
+
+  return (
+    // ... rest of component
+  );
+};
+
+// Separate component for draft card
+const DraftCard: React.FC<{ message: any; onConfirm: (id: string, data: any) => void }> = ({ message, onConfirm }) => {
+  const styles = useStyles();
+  const card = message.card;
+  const [editData, setEditData] = useState(card.data);
+
+  return (
+    <Card className={`${styles.card} ${styles.previewCard}`}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text weight="bold" size={400}>📋 Live of Interest - Draft (Only you can see this)</Text>
+        <Badge appearance="filled" color="warning">Draft</Badge>
+      </div>
+      <Divider style={{ margin: '12px 0' }} />
+      
+      <div className={styles.cardField}>
+        <Text size={200} weight="semibold">Customer</Text>
+        <Input 
+          value={editData.customer || ''} 
+          onChange={(e) => setEditData({...editData, customer: e.target.value})}
+          size="small"
+        />
+      </div>
+      
+      <div className={styles.cardField}>
+        <Text size={200} weight="semibold">Product</Text>
+        <Input 
+          value={editData.product || ''} 
+          onChange={(e) => setEditData({...editData, product: e.target.value})}
+          size="small"
+        />
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Ratio</Text>
+          <Input 
+            type="number" 
+            value={editData.ratio?.toString() || ''} 
+            onChange={(e) => setEditData({...editData, ratio: e.target.value})}
+            size="small"
+          />
+        </div>
+        
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Incoterm</Text>
+          <Input 
+            value={editData.incoterm || ''} 
+            onChange={(e) => setEditData({...editData, incoterm: e.target.value})}
+            size="small"
+          />
+        </div>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Period</Text>
+          <Input 
+            value={editData.period || ''} 
+            onChange={(e) => setEditData({...editData, period: e.target.value})}
+            size="small"
+          />
+        </div>
+        
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Quantity (MT)</Text>
+          <Input 
+            type="number" 
+            value={editData.quantity_mt?.toString() || ''} 
+            onChange={(e) => setEditData({...editData, quantity_mt: e.target.value})}
+            size="small"
+          />
+        </div>
+      </div>
+      
+      <div className={styles.cardActions}>
+        <Button 
+          appearance="primary" 
+          onClick={() => onConfirm(message.id, editData)}
+        >
+          Confirm & Share with Team
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+// Separate component for confirmed card
+const ConfirmedCard: React.FC<{ message: any; onUpdate: (id: string, loiId: string, data: any) => void }> = ({ message, onUpdate }) => {
+  const styles = useStyles();
+  const card = message.card;
+  const [editData, setEditData] = useState(card.data);
+
+  return (
+    <Card className={styles.card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text weight="bold" size={400}>📊 Live of Interest</Text>
+        <Badge appearance="filled" color="success">Confirmed</Badge>
+      </div>
+      <Divider style={{ margin: '12px 0' }} />
+      
+      <div className={styles.cardField}>
+        <Text size={200} weight="semibold">Customer</Text>
+        <Input 
+          value={editData.customer} 
+          onChange={(e) => setEditData({...editData, customer: e.target.value})}
+          size="small"
+        />
+      </div>
+      
+      <div className={styles.cardField}>
+        <Text size={200} weight="semibold">Product</Text>
+        <Input 
+          value={editData.product} 
+          onChange={(e) => setEditData({...editData, product: e.target.value})}
+          size="small"
+        />
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Ratio</Text>
+          <Input 
+            type="number" 
+            value={editData.ratio.toString()} 
+            onChange={(e) => setEditData({...editData, ratio: parseFloat(e.target.value)})}
+            size="small"
+          />
+        </div>
+        
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Incoterm</Text>
+          <Input 
+            value={editData.incoterm} 
+            onChange={(e) => setEditData({...editData, incoterm: e.target.value})}
+            size="small"
+          />
+        </div>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Period</Text>
+          <Input 
+            value={editData.period} 
+            onChange={(e) => setEditData({...editData, period: e.target.value})}
+            size="small"
+          />
+        </div>
+        
+        <div className={styles.cardField}>
+          <Text size={200} weight="semibold">Quantity (MT)</Text>
+          <Input 
+            type="number" 
+            value={editData.quantity_mt.toString()} 
+            onChange={(e) => setEditData({...editData, quantity_mt: parseInt(e.target.value)})}
+            size="small"
+          />
+        </div>
+      </div>
+      
+      <div className={styles.cardActions}>
+        <Button 
+          appearance="primary" 
+          onClick={() => onUpdate(message.id, card.loiId, editData)}
+        >
+          Save Changes
+        </Button>
+      </div>
+      
+      <Text size={200} style={{ marginTop: '12px', color: '#666' }}>
+        Created by {card.data.created_by} • {new Date(card.data.created_at).toLocaleString()}
+      </Text>
+    </Card>
+  );
+};
+
+const TeamsSimulator: React.FC = () => {
+  const styles = useStyles();
+  const [chats, setChats] = useState<GroupChat[]>([
+    { 
+      id: '1', 
+      name: 'Sales Team - Q1', 
+      members: ['John Smith', 'Sarah Johnson'], 
+      hasBot: true 
+    },
+  ]);
+  const [activeChat, setActiveChat] = useState<string>('1');
+  const [messages, setMessages] = useState<Record<string, Message[]>>({
+    '1': [
+      {
+        id: '1',
+        sender: 'John Smith',
+        text: 'Customer Lindt wants to buy 100 MT cocoa butter at 2.56 FOB H1 2026. Is this offer ok?',
+        type: 'user',
+        timestamp: new Date(Date.now() - 300000),
+      },
+      {
+        id: '2',
+        sender: 'Sarah Johnson',
+        text: 'No, offer 2.78 FOB.',
+        type: 'user',
+        timestamp: new Date(Date.now() - 240000),
+      },
+      {
+        id: '3',
+        sender: 'John Smith',
+        text: 'Ok, will do.',
+        type: 'user',
+        timestamp: new Date(Date.now() - 180000),
+      },
+    ],
+  });
+
+  // ... continue with rest of original code from handleBotResponse onwards...
+      return (
+        <Card className={`${styles.card} ${styles.previewCard}`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text weight="bold" size={400}>📋 Live of Interest - Draft (Only you can see this)</Text>
+            <Badge appearance="filled" color="warning">Draft</Badge>
+          </div>
+          <Divider style={{ margin: '12px 0' }} />
+          
+          <div className={styles.cardField}>
+            <Text size={200} weight="semibold">Customer</Text>
+            <Input 
+              value={editData.customer || ''} 
+              onChange={(e) => setEditData({...editData, customer: e.target.value})}
+              size="small"
+            />
+          </div>
+          
+          <div className={styles.cardField}>
+            <Text size={200} weight="semibold">Product</Text>
+            <Input 
+              value={editData.product || ''} 
+              onChange={(e) => setEditData({...editData, product: e.target.value})}
+              size="small"
+            />
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Ratio</Text>
+              <Input 
+                type="number" 
+                value={editData.ratio?.toString() || ''} 
+                onChange={(e) => setEditData({...editData, ratio: e.target.value})}
+                size="small"
+              />
+            </div>
+            
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Incoterm</Text>
+              <Input 
+                value={editData.incoterm || ''} 
+                onChange={(e) => setEditData({...editData, incoterm: e.target.value})}
+                size="small"
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Period</Text>
+              <Input 
+                value={editData.period || ''} 
+                onChange={(e) => setEditData({...editData, period: e.target.value})}
+                size="small"
+              />
+            </div>
+            
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Quantity (MT)</Text>
+              <Input 
+                type="number" 
+                value={editData.quantity_mt?.toString() || ''} 
+                onChange={(e) => setEditData({...editData, quantity_mt: e.target.value})}
+                size="small"
+              />
+            </div>
+          </div>
+          
+          <div className={styles.cardActions}>
+            <Button 
+              appearance="primary" 
+              onClick={() => handleConfirmCard(message.id, editData)}
+            >
+              Confirm & Share with Team
+            </Button>
+          </div>
+        </Card>
+      );
+    } else if (card.type === 'confirmed') {
+      return (
+        <Card className={styles.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text weight="bold" size={400}>📊 Live of Interest</Text>
+            <Badge appearance="filled" color="success">Confirmed</Badge>
+          </div>
+          <Divider style={{ margin: '12px 0' }} />
+          
+          <div className={styles.cardField}>
+            <Text size={200} weight="semibold">Customer</Text>
+            <Input 
+              value={editData.customer} 
+              onChange={(e) => setEditData({...editData, customer: e.target.value})}
+              size="small"
+            />
+          </div>
+          
+          <div className={styles.cardField}>
+            <Text size={200} weight="semibold">Product</Text>
+            <Input 
+              value={editData.product} 
+              onChange={(e) => setEditData({...editData, product: e.target.value})}
+              size="small"
+            />
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Ratio</Text>
+              <Input 
+                type="number" 
+                value={editData.ratio.toString()} 
+                onChange={(e) => setEditData({...editData, ratio: parseFloat(e.target.value)})}
+                size="small"
+              />
+            </div>
+            
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Incoterm</Text>
+              <Input 
+                value={editData.incoterm} 
+                onChange={(e) => setEditData({...editData, incoterm: e.target.value})}
+                size="small"
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Period</Text>
+              <Input 
+                value={editData.period} 
+                onChange={(e) => setEditData({...editData, period: e.target.value})}
+                size="small"
+              />
+            </div>
+            
+            <div className={styles.cardField}>
+              <Text size={200} weight="semibold">Quantity (MT)</Text>
+              <Input 
+                type="number" 
+                value={editData.quantity_mt.toString()} 
+                onChange={(e) => setEditData({...editData, quantity_mt: parseInt(e.target.value)})}
+                size="small"
+              />
+            </div>
+          </div>
+          
+          <div className={styles.cardActions}>
+            <Button 
+              appearance="primary" 
+              onClick={() => handleCardUpdate(message.id, card.loiId, editData)}
+            >
+              Save Changes
+            </Button>
+          </div>
+          
+          <Text size={200} style={{ marginTop: '12px', color: '#666' }}>
+            Created by {card.data.created_by} • {new Date(card.data.created_at).toLocaleString()}
+          </Text>
+        </Card>
+      );
+    }
+  };
+
+  return (
+    <div className={styles.container}>
+      {/* Sidebar */}
+      <div className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <Text size={500} weight="bold" style={{ color: 'white' }}>Teams</Text>
+          <Button 
+            icon={<Add24Regular />} 
+            appearance="transparent"
+            onClick={() => setShowNewChatDialog(true)}
+            style={{ marginTop: '8px', width: '100%', color: 'white' }}
+          >
+            New Group Chat
+          </Button>
+        </div>
+        
+        <div className={styles.chatList}>
+          {chats.map(chat => (
+            <div
+              key={chat.id}
+              className={`${styles.chatItem} ${activeChat === chat.id ? styles.chatItemActive : ''}`}
+              onClick={() => setActiveChat(chat.id)}
+            >
+              <Text weight="semibold" size={300}>{chat.name}</Text>
+              <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                {chat.hasBot && <Badge appearance="tint" color="brand" size="small">Bot</Badge>}
+                <Text size={200} style={{ color: '#666' }}>
+                  {chat.members.length} members
+                </Text>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className={styles.chatArea}>
+        <div className={styles.chatHeader}>
+          <div>
+            <Text size={400} weight="bold">{currentChat?.name}</Text>
+            <Text size={200} style={{ color: '#666', display: 'block' }}>
+              {currentChat?.members.join(', ')}
+            </Text>
+          </div>
+          <Button 
+            icon={<People24Regular />} 
+            appearance="subtle"
+            onClick={() => setShowAddMembersDialog(true)}
+          >
+            Add Members
+          </Button>
+        </div>
+
+        <div className={styles.messages}>
+          {currentMessages.map(msg => (
+            <div key={msg.id} className={styles.message}>
+              {!msg.notification && (
+                <Avatar 
+                  icon={msg.type === 'bot' ? <Bot24Regular /> : <Person24Regular />}
+                  color={msg.type === 'bot' ? 'brand' : 'colorful'}
+                  size={32}
+                />
+              )}
+              <div className={styles.messageContent}>
+                {msg.notification ? (
+                  <div className={styles.notification}>
+                    <Text size={300}>{msg.text}</Text>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Text weight="semibold" size={300}>{msg.sender}</Text>
+                      <Text size={200} style={{ color: '#666', marginLeft: '8px' }}>
+                        {msg.timestamp.toLocaleTimeString()}
+                      </Text>
+                    </div>
+                    {msg.text && (
+                      <div className={styles.messageBubble}>
+                        <Text size={300}>{msg.text}</Text>
+                      </div>
+                    )}
+                    {msg.card && renderCard(msg)}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {currentChat?.hasBot && (
+          <div className={styles.inputArea}>
+            <div className={styles.inputWrapper}>
+              {showMentionMenu && (
+                <div className={styles.mentionMenu}>
+                  <div 
+                    className={styles.mentionItem}
+                    onClick={handleMentionSelect}
+                  >
+                    <Bot24Regular />
+                    <div>
+                      <Text weight="semibold" size={300}>Live of Interest Bot</Text>
+                      <Text size={200} style={{ color: '#666', display: 'block' }}>
+                        AI-powered trading assistant
+                      </Text>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <input
+                ref={inputRef}
+                className={styles.input}
+                placeholder="Type a message... (Type @ to mention the bot)"
+                value={inputText}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+            </div>
+            <Button 
+              icon={<Send24Regular />} 
+              appearance="primary" 
+              onClick={handleSendMessage}
+              style={{ marginTop: '8px' }}
+            >
+              Send
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* New Chat Dialog */}
+      <Dialog open={showNewChatDialog} onOpenChange={(_, data) => setShowNewChatDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Create New Group Chat</DialogTitle>
+            <DialogContent>
+              <div style={{ marginBottom: '16px' }}>
+                <Text>Group Chat Name</Text>
+                <Input 
+                  value={newChatName}
+                  onChange={(e) => setNewChatName(e.target.value)}
+                  placeholder="e.g., Trading Team Q2"
+                  style={{ width: '100%', marginTop: '4px' }}
+                />
+              </div>
+              
+              <Text>Select Members</Text>
+              <div style={{ marginTop: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                <Checkbox 
+                  label="Live of Interest Bot"
+                  checked={selectedMembers.includes('Live of Interest Bot')}
+                  onChange={(_, data) => {
+                    if (data.checked) {
+                      setSelectedMembers([...selectedMembers, 'Live of Interest Bot']);
+                    } else {
+                      setSelectedMembers(selectedMembers.filter(m => m !== 'Live of Interest Bot'));
+                    }
+                  }}
+                  style={{ marginBottom: '8px' }}
+                />
+                {AVAILABLE_USERS.map(user => (
+                  <Checkbox 
+                    key={user.id}
+                    label={`${user.name} (${user.role})`}
+                    checked={selectedMembers.includes(user.name)}
+                    onChange={(_, data) => {
+                      if (data.checked) {
+                        setSelectedMembers([...selectedMembers, user.name]);
+                      } else {
+                        setSelectedMembers(selectedMembers.filter(m => m !== user.name));
+                      }
+                    }}
+                    style={{ marginBottom: '8px' }}
+                  />
+                ))}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowNewChatDialog(false)}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleCreateChat}>
+                Create
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Add Members Dialog */}
+      <Dialog open={showAddMembersDialog} onOpenChange={(_, data) => setShowAddMembersDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Add Members to {currentChat?.name}</DialogTitle>
+            <DialogContent>
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {!currentChat?.hasBot && (
+                  <Checkbox 
+                    label="Live of Interest Bot"
+                    checked={selectedMembers.includes('Live of Interest Bot')}
+                    onChange={(_, data) => {
+                      if (data.checked) {
+                        setSelectedMembers([...selectedMembers, 'Live of Interest Bot']);
+                      } else {
+                        setSelectedMembers(selectedMembers.filter(m => m !== 'Live of Interest Bot'));
+                      }
+                    }}
+                    style={{ marginBottom: '8px' }}
+                  />
+                )}
+                {AVAILABLE_USERS.filter(u => !currentChat?.members.includes(u.name)).map(user => (
+                  <Checkbox 
+                    key={user.id}
+                    label={`${user.name} (${user.role})`}
+                    checked={selectedMembers.includes(user.name)}
+                    onChange={(_, data) => {
+                      if (data.checked) {
+                        setSelectedMembers([...selectedMembers, user.name]);
+                      } else {
+                        setSelectedMembers(selectedMembers.filter(m => m !== user.name));
+                      }
+                    }}
+                    style={{ marginBottom: '8px' }}
+                  />
+                ))}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowAddMembersDialog(false)}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleAddMembers}>
+                Add
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+    </div>
+  );
+};
+
+export default TeamsSimulator;

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "YOUR_APP_ID_HERE",
+  "packageName": "com.yourcompany.loibot",
+  "developer": {
+    "name": "Your Company",
+    "websiteUrl": "https://yourcompany.com",
+    "privacyUrl": "https://yourcompany.com/privacy",
+    "termsOfUseUrl": "https://yourcompany.com/terms"
+  },
+  "name": {
+    "short": "LOI Bot",
+    "full": "Live of Interest Bot"
+  },
+  "description": {
+    "short": "Automatically extract and track trading information from conversations",
+    "full": "Live of Interest Bot uses AI to automatically extract customer, product, pricing, and delivery information from your team conversations. It creates interactive cards that can be edited by team members and syncs changes in real-time with a web dashboard. Perfect for sales and trading teams who need to quickly capture and track deal information."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#0078D4",
+  "bots": [
+    {
+      "botId": "YOUR_BOT_APP_ID_HERE",
+      "scopes": [
+        "groupchat",
+        "team"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "groupchat",
+            "team"
+          ],
+          "commands": [
+            {
+              "title": "help",
+              "description": "Show help information and available commands"
+            },
+            {
+              "title": "last N",
+              "description": "Analyze last N messages (e.g., 'last 50')"
+            },
+            {
+              "title": "since N hours ago",
+              "description": "Analyze messages from last N hours (e.g., 'since 2 hours ago')"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "*.azurewebsites.net",
+    "*.azurestaticapps.net"
+  ],
+  "webApplicationInfo": {
+    "id": "YOUR_BOT_APP_ID_HERE",
+    "resource": "api://YOUR_BOT_APP_ID_HERE"
+  }
+}
+
